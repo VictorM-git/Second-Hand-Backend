@@ -1,0 +1,33 @@
+body {
+  font-family: var(--sh-font-body);
+  color: var(--sh-green-dark);
+  background: var(--sh-bg-soft);
+}
+
+h1, h2, h3, h4 { font-family: var(--sh-font-heading); letter-spacing: -0.02em; }
+
+/* Botones de marca (sobre las clases de Bootstrap) */
+.btn-sh {
+  --bs-btn-bg: var(--sh-green);
+  --bs-btn-border-color: var(--sh-green);
+  --bs-btn-color: #fff;
+  --bs-btn-hover-bg: var(--sh-green-dark);
+  --bs-btn-hover-border-color: var(--sh-green-dark);
+  --bs-btn-hover-color: #fff;
+  --bs-btn-active-bg: var(--sh-green-dark);
+  --bs-btn-active-border-color: var(--sh-green-dark);
+  --bs-btn-active-color: #fff;
+  font-weight: 600;
+}
+.btn-sh-outline {
+  --bs-btn-bg: #fff;
+  --bs-btn-border-color: var(--sh-border);
+  --bs-btn-color: var(--sh-green-dark);
+  --bs-btn-hover-bg: var(--sh-bg-soft);
+  --bs-btn-hover-border-color: var(--sh-green);
+  --bs-btn-hover-color: var(--sh-green-dark);
+  font-weight: 600;
+}
+
+/* Foco visible para accesibilidad con teclado */
+:focus-visible { outline: 3px solid var(--sh-green); outline-offset: 2px; }
