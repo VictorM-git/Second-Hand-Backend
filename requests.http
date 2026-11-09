@@ -1,0 +1,351 @@
+# Pruebas de la API con la extensión REST Client de VS Code.
+# 1. Arranca el backend (npm run dev). Los datos de prueba se cargan en memoria al iniciar.
+# 2. Ejecuta primero los tres logins (clic en "Send Request"): guardan los tokens que usan las demás peticiones.
+# 3. Varias peticiones cambian datos. Para volver al estado inicial, reinicia el servidor.
+
+@baseUrl = http://localhost:3000/api
+
+# Ids de los datos de prueba (los mismos del frontend: src/data/*.js)
+@itemVictor = 1
+@itemCamiloRojas = 3
+@itemGrossman = 8
+@anaCalculo = m1
+@anaEscritorio = m2
+@anaCalculadora = m3
+@anaChaqueta = m4
+@solicitudAceptadaDeAna = 2
+@recibidaPendiente = rr1
+@recibidaRechazada = rr2
+@sara = u3
+@catMuebles = c4
+@catInstrumentos = c5
+
+########## Salud ##########
+
+### Ruta de prueba (servidor y datos cargados en memoria)
+GET {{baseUrl}}/health
+
+
+########## Autenticación ##########
+
+### Login usuaria (Ana) — guarda su token
+# @name loginAna
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "email": "ana@correo.com", "password": "Usuario12345" }
+
+### Login administrador — guarda su token
+# @name loginAdmin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "email": "admin@secondhand.com", "password": "Admin12345" }
+
+### Login de Camilo Rojas (dueño del artículo 3) — guarda su token
+# @name loginCamilo
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "email": "camilo.rojas@correo.com", "password": "Usuario12345" }
+
+###
+@ana = {{loginAna.response.body.$.token}}
+@admin = {{loginAdmin.response.body.$.token}}
+@camilo = {{loginCamilo.response.body.$.token}}
+
+### Login con contraseña incorrecta (401)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "email": "ana@correo.com", "password": "otraClave" }
+
+### Login de cuenta inactiva (403)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "email": "sara@correo.com", "password": "Usuario12345" }
+
+### Registro (201). Repetirlo da 409: el correo ya está registrado
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "Juan Pérez",
+  "email": "juan@correo.com",
+  "phone": "300 123 4567",
+  "location": "Suba",
+  "password": "Secreta123",
+  "confirmPassword": "Secreta123"
+}
+
+### Registro con datos inválidos (400 con el error de cada campo)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{ "name": "", "email": "no-es-correo", "phone": "123", "location": "Marte", "password": "123" }
+
+
+########## Usuarios ##########
+
+### Mi perfil sin token (401)
+GET {{baseUrl}}/users/me
+
+### Mi perfil
+GET {{baseUrl}}/users/me
+Authorization: Bearer {{ana}}
+
+### Editar mi perfil
+PUT {{baseUrl}}/users/me
+Authorization: Bearer {{ana}}
+Content-Type: application/json
+
+{
+  "bio": "Estudiante de ingeniería. Me gusta darle una segunda vida a las cosas.",
+  "instagram": "@anacamila",
+  "location": "Teusaquillo"
+}
+
+### Lista de usuarios como usuaria (403: solo administrador)
+GET {{baseUrl}}/users
+Authorization: Bearer {{ana}}
+
+### Lista de usuarios (administrador), los 7 más recientes
+GET {{baseUrl}}/users?limit=7
+Authorization: Bearer {{admin}}
+
+### Reactivar a Sara (administrador)
+PATCH {{baseUrl}}/users/{{sara}}/status
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{ "status": "Activo" }
+
+
+########## Artículos ##########
+
+### Explorar (público). Mira el encabezado X-Total-Count
+GET {{baseUrl}}/items
+
+### Búsqueda y filtros: texto sin tildes, varias condiciones, orden alfabético, paginación
+GET {{baseUrl}}/items?q=calculo&condition=Usado&condition=Como%20nuevo&sort=title&limit=5&page=1
+
+### Filtro por categoría y localidad
+GET {{baseUrl}}/items?category=Muebles&location=Kennedy
+
+### Últimos 4 (landing)
+GET {{baseUrl}}/items?limit=4&sort=recent
+
+### Detalle de un artículo
+GET {{baseUrl}}/items/{{itemVictor}}
+
+### Detalle de una publicación inactiva sin sesión (404)
+GET {{baseUrl}}/items/{{anaEscritorio}}
+
+### Mis publicaciones
+GET {{baseUrl}}/items/mine
+Authorization: Bearer {{ana}}
+
+### Publicar artículo (la foto es una imagen PNG de 1×1 px en base64)
+POST {{baseUrl}}/items
+Authorization: Bearer {{ana}}
+Content-Type: application/json
+
+{
+  "title": "Diccionario inglés-español Oxford",
+  "category": "Libros",
+  "condition": "Como nuevo",
+  "description": "Diccionario de bolsillo, casi sin uso.\n\nIdeal para el curso de inglés.",
+  "location": "Chapinero",
+  "photo": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+}
+
+### Publicar en una categoría inactiva (400)
+POST {{baseUrl}}/items
+Authorization: Bearer {{ana}}
+Content-Type: application/json
+
+{
+  "title": "Guitarra acústica",
+  "category": "Instrumentos musicales",
+  "condition": "Usado",
+  "description": "Guitarra acústica con funda, le falta una cuerda.",
+  "location": "Chapinero",
+  "photo": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+}
+
+### Editar mi publicación (enviar la URL de la foto actual la conserva)
+PUT {{baseUrl}}/items/{{anaCalculo}}
+Authorization: Bearer {{ana}}
+Content-Type: application/json
+
+{
+  "title": "Cálculo de una variable, Stewart (7.ª edición)",
+  "category": "Libros",
+  "condition": "Usado",
+  "description": "Artículo en buen estado, listo para entregar a quien lo necesite.",
+  "location": "Chapinero",
+  "photo": "/images/items/calculo.jpg"
+}
+
+### Editar una publicación ajena (403)
+PUT {{baseUrl}}/items/{{itemVictor}}
+Authorization: Bearer {{ana}}
+Content-Type: application/json
+
+{ "title": "No es mío" }
+
+### Editar una publicación entregada (409)
+PUT {{baseUrl}}/items/{{anaCalculadora}}
+Authorization: Bearer {{ana}}
+Content-Type: application/json
+
+{
+  "title": "Calculadora científica Casio",
+  "category": "Útiles escolares",
+  "condition": "Como nuevo",
+  "description": "Artículo en buen estado, listo para entregar a quien lo necesite.",
+  "location": "Chapinero",
+  "photo": "/images/items/calculadora.jpg"
+}
+
+### Activar mi publicación inactiva
+PATCH {{baseUrl}}/items/{{anaEscritorio}}/status
+Authorization: Bearer {{ana}}
+Content-Type: application/json
+
+{ "status": "Disponible" }
+
+
+########## Solicitudes ##########
+
+### Mis solicitudes (la aceptada trae los datos de contacto)
+GET {{baseUrl}}/requests
+Authorization: Bearer {{ana}}
+
+### Detalle de una solicitud aceptada
+GET {{baseUrl}}/requests/{{solicitudAceptadaDeAna}}
+Authorization: Bearer {{ana}}
+
+### Solicitar en donación — guarda el id para que Camilo la responda
+# @name solicitud
+POST {{baseUrl}}/requests
+Authorization: Bearer {{ana}}
+Content-Type: application/json
+
+{
+  "itemId": "{{itemCamiloRojas}}",
+  "type": "Donación",
+  "message": "Hola, me serviría mucho para mis clases de estadística."
+}
+
+### Solicitar en intercambio (Ana ofrece su chaqueta)
+POST {{baseUrl}}/requests
+Authorization: Bearer {{ana}}
+Content-Type: application/json
+
+{
+  "itemId": "{{itemGrossman}}",
+  "type": "Intercambio",
+  "offeredItemId": "{{anaChaqueta}}",
+  "message": "Te ofrezco mi chaqueta impermeable a cambio del libro."
+}
+
+### Solicitar mi propio artículo (400)
+POST {{baseUrl}}/requests
+Authorization: Bearer {{ana}}
+Content-Type: application/json
+
+{ "itemId": "{{anaCalculo}}", "type": "Donación", "message": "Es mi propio artículo." }
+
+### Camilo ve la solicitud que le hizo Ana
+GET {{baseUrl}}/requests/received
+Authorization: Bearer {{camilo}}
+
+### Camilo acepta la solicitud de Ana (el artículo pasa a "En proceso")
+PATCH {{baseUrl}}/requests/{{solicitud.response.body.$.id}}
+Authorization: Bearer {{camilo}}
+Content-Type: application/json
+
+{ "status": "Aceptada" }
+
+### Solicitudes que recibió Ana sobre sus publicaciones
+GET {{baseUrl}}/requests/received
+Authorization: Bearer {{ana}}
+
+### Aceptar la solicitud pendiente de Laura
+PATCH {{baseUrl}}/requests/{{recibidaPendiente}}
+Authorization: Bearer {{ana}}
+Content-Type: application/json
+
+{ "status": "Aceptada" }
+
+### Deshacer (volver a Pendiente: el artículo vuelve a "Disponible")
+PATCH {{baseUrl}}/requests/{{recibidaPendiente}}
+Authorization: Bearer {{ana}}
+Content-Type: application/json
+
+{ "status": "Pendiente" }
+
+### Eliminar una solicitud pendiente (409: solo se eliminan las rechazadas)
+DELETE {{baseUrl}}/requests/{{recibidaPendiente}}
+Authorization: Bearer {{ana}}
+
+### Eliminar la solicitud rechazada de Miguel (204)
+DELETE {{baseUrl}}/requests/{{recibidaRechazada}}
+Authorization: Bearer {{ana}}
+
+
+########## Categorías ##########
+
+### Todas las categorías (público)
+GET {{baseUrl}}/categories
+
+### Solo las activas (para publicar y filtrar)
+GET {{baseUrl}}/categories?status=Activa
+
+### Crear categoría (administrador)
+POST {{baseUrl}}/categories
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{ "name": "Electrónica" }
+
+### Crear una categoría repetida (409, sin importar tildes ni mayúsculas)
+POST {{baseUrl}}/categories
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{ "name": "LIBROS" }
+
+### Crear categoría como usuaria (403)
+POST {{baseUrl}}/categories
+Authorization: Bearer {{ana}}
+Content-Type: application/json
+
+{ "name": "Juguetes" }
+
+### Renombrar categoría (se refleja en sus artículos)
+PUT {{baseUrl}}/categories/{{catMuebles}}
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{ "name": "Muebles y decoración" }
+
+### Activar categoría
+PATCH {{baseUrl}}/categories/{{catInstrumentos}}/status
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{ "status": "Activa" }
+
+
+########## Administración ##########
+
+### Indicadores del panel
+GET {{baseUrl}}/admin/stats
+Authorization: Bearer {{admin}}
+
+### Indicadores como usuaria (403)
+GET {{baseUrl}}/admin/stats
+Authorization: Bearer {{ana}}

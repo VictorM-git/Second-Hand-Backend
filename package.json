@@ -1,0 +1,22 @@
+{
+  "name": "secondhand-backend",
+  "private": true,
+  "version": "0.1.0",
+  "description": "API REST de Second Hand: Node.js + Express (datos en memoria, sin base de datos por ahora)",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js"
+  },
+  "engines": {
+    "node": ">=20.19"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.6",
+    "express": "^5.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "swagger-ui-express": "^5.0.1"
+  }
+}
